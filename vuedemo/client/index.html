@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+</head>
+
+<body>
+    <div id="app">
+        <!-- 确定用户名称 -->
+        <div v-if="isshow">
+            <input v-model='name'>
+            <button @click="sendName">enter room</button>
+        </div>
+        <div v-else>
+            <p>当前在线人数{{num}}</p>
+            <ul id="mylist">
+                <li v-for="item in msgLists">
+                    {{item.message}}
+                </li>
+            </ul>
+
+
+            <!-- 客户端发送消息 ->websocket->发送到服务器->发送到其他客户端 -->
+            <div class="send">
+                <input v-model='iptvalue'>
+                <button @click="sendMsg">发送消息</button>
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+
+    <!-- 客户端代码 -->
+    <script>
+        const {
+            createApp
+        } = Vue
+        const app = createApp({
+            data() {
+                return {
+                    num: 0,
+                    name: '',
+                    isshow: true,
+                    iptvalue: "",
+                    wsHandle: "",
+                    msgLists: [{
+                        message: 'foo'
+                    }, {
+                        message: 'bar'
+                    }, {
+                        message: 'hululu'
+                    }, ]
+                }
+            },
+            mounted() {
+                this.wsHandle = new WebSocket('ws://localhost:8100')
+                    // ws.binaryType = "blob";
+                    // // or
+                    // ws.binaryType = "arraybuffer";
+                    // this.wsHandle.binaryType = "blob"
+                this.wsHandle.onopen = this.onOpen
+                this.wsHandle.onmessage = this.onMessage
+            },
+            methods: {
+                sendName() {
+                    this.wsHandle.send(JSON.stringify({
+                        name: this.name,
+                        event: 'login'
+                    }))
+                    this.isshow = false
+                },
+                sendMsg() {
+                    console.log(this.iptvalue);
+                    this.wsHandle.send(
+                        JSON.stringify({
+                            message: this.iptvalue
+                        }))
+                    this.msgLists.push({
+                        message: this.iptvalue
+                    })
+                    this.iptvalue = ''
+                },
+                onOpen() {
+                    console.log('client is connected');
+                },
+                onMessage(evt) {
+                    console.log(evt);
+                    let msg = JSON.parse(evt.data)
+                    if (msg.num) {
+                        this.num = msg.num
+                    }
+                    if (msg.event == 'login') {
+                        this.msgLists.push({
+                            message: 'welcome' + msg.name + 'to valaha'
+                        })
+                    } else if (msg.event == 'logout') {
+                        this.msgLists.push({
+                            message: msg.name + 'out  valaha'
+                        })
+                    } else {
+                        if (msg.name != this.name) {
+                            this.msgLists.push({
+                                message: msg.message
+                            })
+                        }
+
+                    }
+                    /*      console.log(evt);
+                         //将Blob 对象转换成字符串
+                         var reader = new FileReader();
+                         reader.readAsText(evt.data, 'utf-8');
+                         reader.onload = () => {
+                             console.log('reader', reader);
+                             let msg = JSON.parse(reader.result);
+
+                             if (msg.name) {
+                                 this.msgLists.push({
+                                     message: 'welcome' + msg.name + 'to valaha'
+                                 })
+                             } else {
+                                 this.msgLists.push({
+                                     message: msg.message
+                                 })
+                             }
+                         } */
+                }
+            },
+        }).mount('#app')
+    </script>
+</body>
+
+</html>
