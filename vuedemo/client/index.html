@@ -6,19 +6,34 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css" />
+    <!-- <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+    <!-- Import component library -->
+    <script src="https://cdn.jsdelivr.net/npm/element-plus"></script>
 
+    <!-- Import component library -->
 </head>
 
 <body>
     <div id="app">
         <!-- 确定用户名称 -->
         <div v-if="isshow">
-            <input v-model='name'>
-            <button @click="sendName">enter room</button>
+            <el-form style="max-width: 460px" label-width="100px">
+                <el-form-item label="昵 称:">
+                    <el-input v-model='name' />
+                </el-form-item>
+                <el-form-item label="房间号:">
+                    <el-input v-model="roomid" />
+                </el-form-item>
+            </el-form>
+            <el-button type="primary" @click="enterRoom">enter room</el-button>
+
         </div>
         <div v-else>
             <p>当前在线人数{{num}}</p>
+            <p>当前房间{{roomid}}</p>
+
             <ul id="mylist">
                 <li v-for="item in msgLists">
                     {{item.message}}
@@ -47,17 +62,14 @@
         const app = createApp({
             data() {
                 return {
+                    roomid: '',
                     num: 0,
                     name: '',
                     isshow: true,
                     iptvalue: "",
                     wsHandle: "",
                     msgLists: [{
-                        message: 'foo'
-                    }, {
-                        message: 'bar'
-                    }, {
-                        message: 'hululu'
+                        message: 'welcome!'
                     }, ]
                 }
             },
@@ -71,9 +83,10 @@
                 this.wsHandle.onmessage = this.onMessage
             },
             methods: {
-                sendName() {
+                enterRoom() {
                     this.wsHandle.send(JSON.stringify({
                         name: this.name,
+                        roomid: this.roomid,
                         event: 'login'
                     }))
                     this.isshow = false
@@ -81,12 +94,12 @@
                 sendMsg() {
                     console.log(this.iptvalue);
                     this.wsHandle.send(
-                        JSON.stringify({
-                            message: this.iptvalue
-                        }))
-                    this.msgLists.push({
-                        message: this.iptvalue
-                    })
+                            JSON.stringify({
+                                message: this.iptvalue
+                            }))
+                        // this.msgLists.push({
+                        //     message: this.iptvalue
+                        // })
                     this.iptvalue = ''
                 },
                 onOpen() {
@@ -100,7 +113,7 @@
                     }
                     if (msg.event == 'login') {
                         this.msgLists.push({
-                            message: 'welcome' + msg.name + 'to valaha'
+                            message: 'welcome ' + msg.name + ' to valaha'
                         })
                     } else if (msg.event == 'logout') {
                         this.msgLists.push({
@@ -114,27 +127,10 @@
                         }
 
                     }
-                    /*      console.log(evt);
-                         //将Blob 对象转换成字符串
-                         var reader = new FileReader();
-                         reader.readAsText(evt.data, 'utf-8');
-                         reader.onload = () => {
-                             console.log('reader', reader);
-                             let msg = JSON.parse(reader.result);
 
-                             if (msg.name) {
-                                 this.msgLists.push({
-                                     message: 'welcome' + msg.name + 'to valaha'
-                                 })
-                             } else {
-                                 this.msgLists.push({
-                                     message: msg.message
-                                 })
-                             }
-                         } */
                 }
             },
-        }).mount('#app')
+        }).use(ElementPlus).mount('#app')
     </script>
 </body>
 
