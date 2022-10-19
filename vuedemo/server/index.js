@@ -8,10 +8,19 @@ const wss = new WebSocket.Server({ port: 8100 })
     // redit -》 set -》 group[roomid]-> 对应的会话id
     // mongodb -》 用户历史加入的房间 -》 用户历史发消息-》 收藏   等用户相关需要持久化的数据
 let group = {}
+let timeInterval = 5000
+    // 提高服务的稳定性
+    // 监测客户端的连接  定时器 超过指定时间 主动断开客户端的连接
 wss.on('connection', function(ws) {
     console.log('a new client is connected!');
+
+    ws.isAlive = true
     ws.on('message', function(msg) {
         let msgObj = JSON.parse(msg.toString())
+        if (msgObj.event == 'heartbeat' && msgObj.message == 'pong') {
+            ws.isAlive = true
+            return
+        }
         if (msgObj.name) {
             ws.name = msgObj.name
         }
@@ -62,3 +71,18 @@ wss.on('connection', function(ws) {
             })
     })
 });
+
+const interval = setInterval(() => {
+    // 遍历所有的客户端,发送一个ping消息
+    // 监测是否有返回 如果没有返回或者超时之后 主动断开与客户端的连接
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive == false) {
+            return ws.terminate()
+        }
+        ws.isAlive = false
+        ws.send(JSON.stringify({
+            event: 'heartbeat',
+            message: 'ping'
+        }))
+    })
+}, timeInterval)

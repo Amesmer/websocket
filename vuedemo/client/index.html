@@ -62,6 +62,7 @@
         const app = createApp({
             data() {
                 return {
+                    handler: '',
                     roomid: '',
                     num: 0,
                     name: '',
@@ -81,6 +82,8 @@
                     // this.wsHandle.binaryType = "blob"
                 this.wsHandle.onopen = this.onOpen
                 this.wsHandle.onmessage = this.onMessage
+                this.wsHandle.onerror = this.onClose
+
             },
             methods: {
                 enterRoom() {
@@ -103,11 +106,23 @@
                     this.iptvalue = ''
                 },
                 onOpen() {
+                    // 连接创建之时
+                    //  设置定时器->如果超时或者服务端没有响应  则断开连接
                     console.log('client is connected');
+                    this.checkServer()
                 },
                 onMessage(evt) {
                     console.log(evt);
                     let msg = JSON.parse(evt.data)
+                        // 心跳检测逻辑
+                    if (msg.event == 'heartbeat' && msg.message == 'ping') {
+                        this.checkServer()
+                        this.wsHandle.send(JSON.stringify({
+                            event: 'heartbeat',
+                            message: 'pong',
+                        }))
+                        return
+                    }
                     if (msg.num) {
                         this.num = msg.num
                     }
@@ -128,6 +143,21 @@
 
                     }
 
+                },
+                onClose() {
+                    // 关闭websocket连接
+                    this.wsHandle.close()
+                },
+                checkServer() {
+                    console.log("checkServer in");
+                    // 计时器去定时检测websocket的连接
+                    clearTimeout(this.handler);
+                    // 超时之后，即会执行
+                    this.handler = setTimeout(() => {
+                        console.log("checkServer fail, close websocket");
+                        // 主动断开服务器端的连接
+                        this.onClose();
+                    }, 5000 + 1000);
                 }
             },
         }).use(ElementPlus).mount('#app')
