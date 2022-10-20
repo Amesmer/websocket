@@ -62,6 +62,8 @@
         const app = createApp({
             data() {
                 return {
+                    reconnect: '',
+                    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoiZm9vYmFyIiwiaWF0IjoxNjY2MjU4NzIyLCJleHAiOjE2NjYzNDUxMjJ9.kC9XhN3Ts00LpKf2fblHyTgiQtgDLsAjxIKn2jeeBOQ',
                     handler: '',
                     roomid: '',
                     num: 0,
@@ -75,17 +77,20 @@
                 }
             },
             mounted() {
-                this.wsHandle = new WebSocket('ws://localhost:8100')
-                    // ws.binaryType = "blob";
-                    // // or
-                    // ws.binaryType = "arraybuffer";
-                    // this.wsHandle.binaryType = "blob"
-                this.wsHandle.onopen = this.onOpen
-                this.wsHandle.onmessage = this.onMessage
-                this.wsHandle.onerror = this.onClose
+                this.init()
 
             },
             methods: {
+                init() {
+                    this.wsHandle = new WebSocket('ws://localhost:8100')
+                        // ws.binaryType = "blob";
+                        // // or
+                        // ws.binaryType = "arraybuffer";
+                        // this.wsHandle.binaryType = "blob"
+                    this.wsHandle.onopen = this.onOpen
+                    this.wsHandle.onmessage = this.onMessage
+                    this.wsHandle.onerror = this.onError
+                },
                 enterRoom() {
                     this.wsHandle.send(JSON.stringify({
                         name: this.name,
@@ -110,11 +115,30 @@
                     //  设置定时器->如果超时或者服务端没有响应  则断开连接
                     console.log('client is connected');
                     this.checkServer()
+                        // 发送鉴权token token-》expire
+                    const data = {
+                        event: 'auth',
+                        message: this.token
+                    }
+                    this.wsHandle.send(JSON.stringify(data))
                 },
                 onMessage(evt) {
                     console.log(evt);
                     let msg = JSON.parse(evt.data)
-                        // 心跳检测逻辑
+                    if (msg.event == 'noauth') {
+                        // 相当于鉴权失败
+                        // 去请求token
+                        console.log(msg.message);
+                        // login() 从新拿token
+                        const token = this.token
+                            //    第二次鉴权
+                        this.wsHandle.send(JSON.stringify({
+                            event: 'auth',
+                            message: token
+                        }))
+                        return
+                    }
+                    // 心跳检测逻辑
                     if (msg.event == 'heartbeat' && msg.message == 'ping') {
                         this.checkServer()
                         this.wsHandle.send(JSON.stringify({
@@ -145,8 +169,18 @@
 
                 },
                 onClose() {
+                    // 可以使用reconnecting-websocket 库实现
                     // 关闭websocket连接
                     this.wsHandle.close()
+                },
+                onError() {
+                    clearTimeout(this.reconnect)
+                        // reconnect websocket
+                    this.reconnect = setTimeout(() => {
+                        this.init()
+
+                    }, 3000);
+
                 },
                 checkServer() {
                     console.log("checkServer in");
@@ -157,6 +191,8 @@
                         console.log("checkServer fail, close websocket");
                         // 主动断开服务器端的连接
                         this.onClose();
+                        // 再次初始化websocket
+                        this.init()
                     }, 5000 + 1000);
                 }
             },

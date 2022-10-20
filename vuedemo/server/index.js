@@ -1,4 +1,11 @@
 const WebSocket = require('ws')
+const jwt = require('jsonwebtoken')
+
+// 测试用token
+const token = jwt.sign({
+    data: 'foobar'
+}, 'secret', { expiresIn: '1d' });
+console.log('token', token);
 
 const wss = new WebSocket.Server({ port: 8100 })
     // 多聊天室功能
@@ -8,7 +15,7 @@ const wss = new WebSocket.Server({ port: 8100 })
     // redit -》 set -》 group[roomid]-> 对应的会话id
     // mongodb -》 用户历史加入的房间 -》 用户历史发消息-》 收藏   等用户相关需要持久化的数据
 let group = {}
-let timeInterval = 5000
+let timeInterval = 3000
     // 提高服务的稳定性
     // 监测客户端的连接  定时器 超过指定时间 主动断开客户端的连接
 wss.on('connection', function(ws) {
@@ -17,6 +24,34 @@ wss.on('connection', function(ws) {
     ws.isAlive = true
     ws.on('message', function(msg) {
         let msgObj = JSON.parse(msg.toString())
+            // 鉴权token
+        if (msgObj.event == 'auth') {
+            // 拿到token 校验时效性
+            console.log('msg auth is: ' + msgObj.message)
+                // 拿到token,并且去校验时效性
+            jwt.verify(msgObj.message, 'secret', function(err, decode) {
+                if (err) {
+                    // websocket返回前台一个消息
+                    console.log('auth error')
+                    return
+                } else {
+                    // 鉴权通过的逻辑
+                    // 这里可以拿到decode，即payload里面的内容
+                    ws.isAuth = true
+                    return
+                }
+                console.log(JSON.stringify(decode));
+            })
+        }
+        // 拦截非鉴权请求
+        if (!ws.isAuth) {
+            // 去给客户端发送重新鉴权的消息
+            ws.send(JSON.stringify({
+                event: 'noauth',
+                message: 'please auth again, your token is expired!'
+            }))
+            return
+        }
         if (msgObj.event == 'heartbeat' && msgObj.message == 'pong') {
             ws.isAlive = true
             return
@@ -77,7 +112,9 @@ const interval = setInterval(() => {
     // 监测是否有返回 如果没有返回或者超时之后 主动断开与客户端的连接
     wss.clients.forEach((ws) => {
         if (ws.isAlive == false) {
-            return ws.terminate()
+            console.log('client is disconnented');
+            group[ws.roomid]--
+                return ws.terminate()
         }
         ws.isAlive = false
         ws.send(JSON.stringify({
