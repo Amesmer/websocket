@@ -1,5 +1,21 @@
 const WebSocket = require('ws')
+const redis = require('redis')
 const jwt = require('jsonwebtoken')
+
+
+const options = {
+    host: '43.254.105.235',
+    port: '11050'
+}
+
+const redisClient = redis.createClient(options)
+
+redisClient.on('connect', () => {
+    console.log('redisclient is connented to server');
+})
+redisClient.on('error', (err) => {
+    console.log('redisclient is error' + err);
+})
 
 // 测试用token
 const token = jwt.sign({
