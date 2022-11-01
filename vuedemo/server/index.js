@@ -1,65 +1,16 @@
 const WebSocket = require('ws')
-const redis = require('redis')
 const jwt = require('jsonwebtoken')
-const { promisifyAll } = require('bluebird')
 
-const options = {
-    url: 'redis://127.0.0.1:11050',
-    // host: '43.254.105.235',
-    // host: '127.0.0.1',
+const redis = require('./src/common/RedisConfig')
 
-    // port: '11050'
-}
 
-const redisClient = redis.createClient(options)
-promisifyAll(redisClient)
-redisClient.on('connect', () => {
-    console.log('redisclient is connented to server');
-})
-redisClient.on('error', (err) => {
-    console.log('redisclient is error' + err);
-})
-redisClient.connect().then(() => {
-    redisClient.get('ike')
-        .then(val => {
-            console.log(val)
-        })
-})
-
-// redisClient.set('ike', 'hello world', redis.print)
-// redisClient.get('ike', (err, reply) => {
-//     if (err) {
-//         console.log('err is', err);
-//     } else {
-//         console.log('reply is', reply);
-//     }
-// });
-// 加入bluebird  redisfunction-》 asyncfunctions
-// let run = async() => {
-
-//     const result = redisClient.getAsync('ike')
-//     console.log(result);
+// async function runRedis() {
+//     await redis.set("login", "loginuser")
+//     console.log(await redis.get("login"))
 // }
-// run()
+// runRedis()
 
 
-/**
- * 获取键值同步返回
- * @param key
- * @returns {Promise<any>}
- */
-
-const newGet = async(key) => {
-    let val = await new Promise((resolve => {
-        redisClient.get(key, function(err, res) {
-            return resolve(res);
-        });
-    }));
-    return JSON.parse(val);
-};
-
-
-newGet('ike')
 
 // 测试用token
 const token = jwt.sign({
@@ -132,8 +83,6 @@ wss.on('connection', function(ws) {
                 group[ws.roomid] = 1
                 console.log('2', group);
             }
-
-
         }
 
 
