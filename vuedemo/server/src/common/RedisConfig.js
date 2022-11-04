@@ -7,7 +7,7 @@ const redis_config = {
     host: '127.0.0.1',
     port: '11050',
     password: '',
-    number: 1,
+    number: 0,
 }
 
 const url = `redis://:${redis_config.password}@${redis_config.host}:${redis_config.port}/${redis_config.number}`
@@ -21,11 +21,13 @@ class Redis {
         this.redisClient.on('error', err => {
             console.err('err', err)
         })
+        this.redisClient.connect() // 连接
+
         this.fun = async(callback, key, value) => {
             return new Promise(async(res, rej) => {
-                await this.redisClient.connect() // 连接
+                // await this.redisClient.connect() // 连接
                 let ok = callback(key, value) // 成功ok
-                await this.redisClient.quit() // 关闭
+                    // await this.redisClient.quit() // 关闭
                 res(ok)
             })
         }
@@ -48,8 +50,35 @@ class Redis {
         }, key)
     }
 
-    async increase() {
+    async increase(key) {
+        return this.fun(async() => {
+            return await this.redisClient.incr(key)
 
+        }, key)
+
+    }
+    async decrease(key) {
+        return this.fun(async() => {
+            return await this.redisClient.decr(key)
+
+        }, key)
+
+    }
+
+    async getkeys(reg) {
+        return this.fun(async() => {
+            return await this.redisClient.keys(reg + '*')
+        }, reg)
+
+    }
+    async existKey(key) {
+        return this.fun(async() => {
+            return await this.redisClient.exists(key)
+        }, key)
+
+    }
+    quit() {
+        this.redisClient.quit()
     }
 }
 

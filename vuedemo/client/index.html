@@ -31,7 +31,7 @@
 
         </div>
         <div v-else>
-            <p>当前在线人数{{num}}</p>
+            <p>当前在线人数{{num}},房间总人数{{total}}</p>
             <p>当前房间{{roomid}}</p>
 
             <ul id="mylist">
@@ -63,17 +63,20 @@
             data() {
                 return {
                     reconnect: '',
-                    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoiZm9vYmFyIiwiaWF0IjoxNjY2MjU4NzIyLCJleHAiOjE2NjYzNDUxMjJ9.kC9XhN3Ts00LpKf2fblHyTgiQtgDLsAjxIKn2jeeBOQ',
+                    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoiZm9vYmFyIiwiaWF0IjoxNjY3NTI2MTg2LCJleHAiOjE2Njc2MTI1ODZ9.nZ82QE-oI9rd95-Qy2vrlhlc-GPvF_t915Orozxe54g',
                     handler: '',
                     roomid: '',
                     num: 0,
+                    total: 0,
                     name: '',
                     isshow: true,
                     iptvalue: "",
                     wsHandle: "",
-                    msgLists: [{
-                        message: 'welcome!'
-                    }, ]
+                    msgLists: [
+                        //     {
+                        //     // message: 'welcome!'
+                        // }, 
+                    ]
                 }
             },
             mounted() {
@@ -92,9 +95,12 @@
                     this.wsHandle.onerror = this.onError
                 },
                 enterRoom() {
+                    const urlParams = new URLSearchParams(window.location.search)
+                    const uid = urlParams.get('uid')
                     this.wsHandle.send(JSON.stringify({
                         name: this.name,
                         roomid: this.roomid,
+                        uid: uid,
                         event: 'login'
                     }))
                     this.isshow = false
@@ -103,6 +109,7 @@
                     console.log(this.iptvalue);
                     this.wsHandle.send(
                             JSON.stringify({
+                                event: 'message',
                                 message: this.iptvalue
                             }))
                         // this.msgLists.push({
@@ -149,17 +156,18 @@
                     }
                     if (msg.num) {
                         this.num = msg.num
+                        this.total = msg.total
                     }
                     if (msg.event == 'login') {
                         this.msgLists.push({
-                            message: 'welcome ' + msg.name + ' to valaha'
+                            message: 'welcome ' + msg.name + ' to valhala'
                         })
                     } else if (msg.event == 'logout') {
                         this.msgLists.push({
-                            message: msg.name + 'out  valaha'
+                            message: msg.name + 'out  valhala'
                         })
                     } else {
-                        if (msg.name != this.name) {
+                        if (msg.name != this.name && msg.event != 'auth') {
                             this.msgLists.push({
                                 message: msg.message
                             })
